@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>PasswordStore — Independent Security Review</title>
+  <style>
+    :root {
+      --ink: #1a1a1a;
+      --muted: #5a5a5a;
+      --paper: #fafaf8;
+      --rule: #d8d8d4;
+      --gold: #b0893e;
+      --high: #9b2c2c;
+      --medium: #8a6a1f;
+      --low: #5c5c5c;
+      --info: #5c5c5c;
+      --code-bg: #1b1c1e;
+      --code-fg: #e8e2d6;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "Iowan Old Style", Palatino, "Palatino Linotype", Georgia, serif;
+      font-size: 11pt;
+      line-height: 1.55;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    @page {
+      size: A4;
+      margin: 18mm 16mm 20mm;
+    }
+
+    @page :first {
+      margin: 0;
+    }
+
+    .cover {
+      min-height: 100vh;
+      padding: 28mm 18mm 24mm;
+      background: #000000;
+      color: #f3eee4;
+      page-break-after: always;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .cover img.mark {
+      width: 100%;
+      max-width: 640px;
+      max-height: 210px;
+      object-fit: contain;
+      display: block;
+      margin: 12px auto 28px;
+    }
+
+    .cover h1 {
+      font-weight: 400;
+      font-size: 13pt;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      text-align: center;
+      color: #c4a35a;
+      margin: 0 0 8px;
+    }
+
+    .cover h2 {
+      font-weight: 400;
+      font-size: 32pt;
+      text-align: center;
+      margin: 0 0 28px;
+      letter-spacing: 0.04em;
+    }
+
+    .cover .byline {
+      text-align: center;
+      color: #cfc6b4;
+      font-size: 11pt;
+      margin-bottom: 8px;
+    }
+
+    .cover .byline a { color: #e4d5a8; text-decoration: none; }
+
+    .cover .note {
+      text-align: center;
+      color: #8d8778;
+      font-size: 9.5pt;
+      max-width: 460px;
+      margin: 0 auto 32px;
+      font-style: italic;
+    }
+
+    table.meta, table.findings {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .cover table.meta {
+      margin-top: auto;
+      font-size: 10pt;
+    }
+
+    .cover table.meta th,
+    .cover table.meta td {
+      border-top: 1px solid #2a2a2a;
+      padding: 8px 0;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .cover table.meta th {
+      width: 28%;
+      color: #c4a35a;
+      font-weight: 400;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-size: 8.5pt;
+    }
+
+    .cover table.meta td {
+      color: #efe8da;
+      font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+      font-size: 10pt;
+    }
+
+    .page {
+      page-break-before: always;
+    }
+
+    .toc a {
+      color: var(--ink);
+      text-decoration: none;
+    }
+
+    .toc li { margin: 4px 0; }
+
+    table.risk {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: center;
+      font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+      font-size: 9.5pt;
+      margin: 12px 0 16px;
+    }
+
+    table.risk th, table.risk td {
+      border: 1px solid var(--rule);
+      padding: 8px 6px;
+    }
+
+    table.risk th {
+      background: #f0f0ee;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      font-size: 8pt;
+      color: var(--ink);
+    }
+
+    table.risk td.cell-h { background: #f4d6d6; }
+    table.risk td.cell-hm { background: #f3e2c8; }
+    table.risk td.cell-m { background: #efe6c9; }
+    table.risk td.cell-ml { background: #e8e8e4; }
+    table.risk td.cell-l { background: #ececea; }
+
+    table.counts td:last-child { text-align: right; width: 80px; }
+
+    h3.section {
+      font-weight: 400;
+      font-size: 16pt;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink);
+      border-bottom: 1px solid var(--rule);
+      padding-bottom: 6px;
+      margin: 0 0 16px;
+    }
+
+    p.lead {
+      color: var(--muted);
+      margin-top: 0;
+    }
+
+    table.findings th,
+    table.findings td {
+      border-bottom: 1px solid var(--rule);
+      padding: 8px 6px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    table.findings th {
+      font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+      font-size: 8.5pt;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    table.findings td.id {
+      font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+      white-space: nowrap;
+      width: 48px;
+    }
+
+    .sev {
+      font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+      font-size: 8.5pt;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .sev.high { color: var(--high); }
+    .sev.low { color: var(--low); }
+    .sev.info { color: var(--info); }
+
+    .finding {
+      margin: 22px 0 0;
+      padding-top: 8px;
+      border-top: 1px solid var(--rule);
+    }
+
+    .finding h4 {
+      font-weight: 600;
+      font-size: 13pt;
+      margin: 0 0 10px;
+      line-height: 1.35;
+      page-break-after: avoid;
+    }
+
+    .label {
+      font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+      font-size: 8.5pt;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    pre {
+      background: var(--code-bg);
+      color: var(--code-fg);
+      padding: 12px 14px;
+      border-radius: 4px;
+      overflow: hidden;
+      font-family: "SF Mono", Menlo, Consolas, monospace;
+      font-size: 8.6pt;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    code {
+      font-family: "SF Mono", Menlo, Consolas, monospace;
+      font-size: 0.92em;
+    }
+
+    p code, li code, td code {
+      background: #eeeeec;
+      padding: 1px 4px;
+      border-radius: 3px;
+    }
+
+    ol { padding-left: 1.2em; }
+
+    @media print {
+      .cover { min-height: 297mm; padding-bottom: 28mm; }
+    }
+  </style>
+</head>
+<body>
+  <section class="cover">
+    <img class="mark" src="aetherion-header.png" alt="Aetherion" />
+    <h1>Independent Security Review</h1>
+    <h2>PasswordStore</h2>
+    <p class="byline">
+      Author: Venkatesh Pamarthi<br />
+      <a href="https://github.com/venkateshpamarthi">github.com/venkateshpamarthi</a>
+    </p>
+    <p class="note">
+      Aetherion is only a personal mark on the page — a small signature, not a firm, studio, or client engagement.
+    </p>
+    <table class="meta">
+      <tr><th>Protocol</th><td>PasswordStore</td></tr>
+      <tr><th>Review type</th><td>Educational / portfolio review</td></tr>
+      <tr><th>Version</th><td>0.1</td></tr>
+      <tr><th>Date</th><td>27 September 2026</td></tr>
+      <tr><th>Commit</th><td>2e8f81e263b3a9d18fab4fb5c46805ffc10a9990</td></tr>
+      <tr><th>Compiler</th><td>Solidity 0.8.18</td></tr>
+      <tr><th>Chain</th><td>Ethereum</td></tr>
+      <tr><th>In scope</th><td>src/PasswordStore.sol</td></tr>
+    </table>
+  </section>
+
+  <section class="page">
+    <h3 class="section">Table of contents</h3>
+    <ol class="toc">
+      <li><a href="#about">About</a></li>
+      <li><a href="#disclaimer">Disclaimer</a></li>
+      <li><a href="#risk">Risk classification</a></li>
+      <li><a href="#details">Audit details</a></li>
+      <li><a href="#protocol">Protocol summary</a></li>
+      <li><a href="#executive">Executive summary</a></li>
+      <li><a href="#findings">Findings</a></li>
+    </ol>
+
+    <h3 class="section" id="about">About</h3>
+    <p>
+      Venkatesh Pamarthi is an independent smart contract reviewer and former blockchain developer.
+      This document is an educational portfolio review of PasswordStore. It is not a client engagement.
+      Aetherion is only a personal mark on the page.
+    </p>
+
+    <h3 class="section" id="disclaimer">Disclaimer</h3>
+    <p>
+      I made a best effort to find as many issues as I could in the time boxed for this review. I do not claim
+      the list is complete, and I take no responsibility for how these findings are used. A security review is
+      not an endorsement of the protocol or the product. The work here is limited to the security of the
+      Solidity implementation in scope.
+    </p>
+
+    <h3 class="section" id="risk">Risk classification</h3>
+    <p class="lead">Issues are graded by impact and likelihood.</p>
+    <table class="risk">
+      <thead>
+        <tr>
+          <th></th>
+          <th></th>
+          <th colspan="3">Impact</th>
+        </tr>
+        <tr>
+          <th></th>
+          <th></th>
+          <th>High</th>
+          <th>Medium</th>
+          <th>Low</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th rowspan="3">Likelihood</th>
+          <th>High</th>
+          <td class="cell-h">H</td><td class="cell-hm">H/M</td><td class="cell-m">M</td>
+        </tr>
+        <tr>
+          <th>Medium</th>
+          <td class="cell-hm">H/M</td><td class="cell-m">M</td><td class="cell-ml">M/L</td>
+        </tr>
+        <tr>
+          <th>Low</th>
+          <td class="cell-m">M</td><td class="cell-ml">M/L</td><td class="cell-l">L</td>
+        </tr>
+      </tbody>
+    </table>
+    <ul>
+      <li><strong>High impact:</strong> assets lost, confidentiality of the stored password broken, or the owner loses control of the store.</li>
+      <li><strong>Medium impact:</strong> a subset of users or a recoverable failure of a core path.</li>
+      <li><strong>Low impact:</strong> unexpected behavior with limited or no direct loss.</li>
+      <li><strong>Informational:</strong> documentation, clarity, or best-practice notes with no runtime loss.</li>
+    </ul>
+
+    <h3 class="section" id="details">Audit details</h3>
+    <p>Findings in this document correspond to commit:</p>
+<pre>2e8f81e263b3a9d18fab4fb5c46805ffc10a9990</pre>
+    <p><span class="label">Scope</span></p>
+<pre>src/
+└── PasswordStore.sol</pre>
+    <p>Out of scope: deployment scripts, tests, and dependencies except where they help prove a finding.</p>
+
+    <h3 class="section" id="protocol">Protocol summary</h3>
+    <p>
+      PasswordStore is a single-contract application for storing and retrieving one user’s password.
+      The design is for a single owner. Only that owner should be able to set or read the password,
+      and others should not be able to see it.
+    </p>
+    <p><span class="label">Roles</span></p>
+    <ul>
+      <li><strong>Owner:</strong> the deployer (<code>msg.sender</code> in the constructor). Only this address should set or read the password. For this contract, only the owner should interact with it.</li>
+    </ul>
+
+    <h3 class="section" id="executive">Executive summary</h3>
+    <p class="lead">
+      This review covers <code>PasswordStore.sol</code> only. It is not a paid audit.
+      The contract cannot keep a password secret on-chain, and <code>setPassword</code> has no owner check.
+      Those two issues break the stated product. A missing constructor password and incorrect NatSpec are smaller.
+    </p>
+
+    <table class="findings counts">
+      <thead>
+        <tr><th>Severity</th><th>Count</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>High</td><td>2</td></tr>
+        <tr><td>Medium</td><td>0</td></tr>
+        <tr><td>Low</td><td>1</td></tr>
+        <tr><td>Informational</td><td>1</td></tr>
+        <tr><td>Gas</td><td>0</td></tr>
+        <tr><td><strong>Total</strong></td><td><strong>4</strong></td></tr>
+      </tbody>
+    </table>
+
+    <table class="findings">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Finding</th>
+          <th>Severity</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="id">H-1</td>
+          <td>On-chain password storage is publicly readable regardless of the <code>private</code> visibility specifier</td>
+          <td><span class="sev high">High</span></td>
+        </tr>
+        <tr>
+          <td class="id">H-2</td>
+          <td>Missing access control on <code>setPassword</code> allows anyone to overwrite the stored password</td>
+          <td><span class="sev high">High</span></td>
+        </tr>
+        <tr>
+          <td class="id">L-1</td>
+          <td>The constructor does not set an initial password, so the store is empty until the first <code>setPassword</code></td>
+          <td><span class="sev low">Low</span></td>
+        </tr>
+        <tr>
+          <td class="id">I-1</td>
+          <td>Incorrect NatSpec on <code>getPassword</code> documents a parameter the function does not accept</td>
+          <td><span class="sev info">Informational</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="page" id="findings">
+    <h3 class="section">Findings</h3>
+
+    <article class="finding">
+      <h4>[H-1] On-chain password storage is publicly readable regardless of the <code>private</code> visibility specifier</h4>
+      <p><span class="label">Description</span><br />
+        <code>PasswordStore::s_password</code> is declared <code>private</code> and is only meant to be returned to the owner through
+        <code>PasswordStore::getPassword</code>. That visibility specifier does <strong>not</strong> keep the value secret.
+      </p>
+      <p>
+        On Ethereum, every contract storage slot is public. <code>private</code> only prevents other <em>contracts</em> from reading
+        the variable in Solidity. Anyone can still read the slot directly from a node, a block explorer, or tools such as
+        <code>cast storage</code>.
+      </p>
+      <p>
+        The protocol’s stated goal is that “others won’t be able to see” the password. Storing the plaintext password on-chain
+        breaks that guarantee, even if <code>getPassword</code> correctly restricts callers.
+      </p>
+<pre>address private s_owner;
+// @audit storage is public on-chain; `private` does not hide this value
+string private s_password;</pre>
+      <p><span class="label">Impact</span><br />
+        Any observer can recover the stored password. This breaks the core product promise of a private password store and
+        fully compromises confidentiality.
+      </p>
+      <p><span class="label">Proof of Concept</span></p>
+      <ol>
+        <li>Start a local node: <code>anvil</code></li>
+        <li>Deploy the contract: <code>make deploy</code></li>
+        <li>Read storage slot <code>1</code> (<code>s_password</code>). On a default Anvil deployment the contract address is
+          <code>0x5FbDB2315678afecb367f032d93F642f64180aa3</code>:
+<pre>cast storage 0x5FbDB2315678afecb367f032d93F642f64180aa3 1 --rpc-url 127.0.0.1:8545</pre>
+          Example result (bytes32):
+<pre>0x6d7950617373776f726400000000000000000000000000000000000000000014</pre>
+        </li>
+        <li>Decode the bytes32 value to a string:
+<pre>cast parse-bytes32-string 0x6d7950617373776f726400000000000000000000000000000000000000000014</pre>
+          Result: <code>myPassword</code>
+        </li>
+      </ol>
+      <p>The password is readable without calling <code>getPassword</code> and without being the owner.</p>
+      <p><span class="label">Recommended Mitigation</span><br />
+        A password cannot be kept secret if it is stored in plaintext on-chain. The architecture needs to change.
+      </p>
+      <p>
+        One option is to keep the password off-chain, encrypt it, and store only the ciphertext (or a hash) on-chain.
+        That design would require the owner to remember a separate secret used for decryption.
+      </p>
+      <p>
+        If the password is encrypted off-chain, consider removing the on-chain view function as well. An owner who later
+        calls a decrypt-and-return helper from a public node or explorer could still leak the plaintext.
+      </p>
+    </article>
+
+    <article class="finding">
+      <h4>[H-2] Missing access control on <code>setPassword</code> allows anyone to overwrite the stored password</h4>
+      <p><span class="label">Description</span><br />
+        <code>PasswordStore::setPassword</code> has no owner check. The NatSpec and protocol design say that only the owner
+        should be able to store or update the password, but the function is <code>external</code> and accepts a call from any address.
+      </p>
+<pre>function setPassword(string memory newPassword) external {
+    // @audit no access control; any caller can overwrite s_password
+    s_password = newPassword;
+    emit SetNetPassword();
+}</pre>
+      <p>
+        <code>getPassword</code> correctly reverts for non-owners with <code>PasswordStore__NotOwner</code>, but
+        <code>setPassword</code> never performs that check.
+      </p>
+      <p><span class="label">Impact</span><br />
+        Any address can overwrite the stored password. The owner can lose control of the value they intended to keep, and the
+        contract no longer behaves as a single-user password store.
+      </p>
+      <p><span class="label">Proof of Concept</span><br />
+        Add the following test to <code>PasswordStore.t.sol</code>:
+      </p>
+<pre>function test_anyone_can_set_password(address randomAddress) public {
+    vm.assume(randomAddress != owner);
+    vm.prank(randomAddress);
+    string memory expectedPassword = "myNewPassword";
+    passwordStore.setPassword(expectedPassword);
+    vm.prank(owner);
+    string memory actualPassword = passwordStore.getPassword();
+    assertEq(actualPassword, expectedPassword);
+}</pre>
+      <p>The test passes: a non-owner sets the password, and the owner later reads that attacker-controlled value.</p>
+      <p><span class="label">Recommended Mitigation</span><br />
+        Enforce the same owner check used in <code>getPassword</code>:
+      </p>
+<pre>if (msg.sender != s_owner) {
+    revert PasswordStore__NotOwner();
+}</pre>
+      <p>A dedicated <code>onlyOwner</code> modifier is also acceptable if the team prefers that style.</p>
+    </article>
+
+    <article class="finding">
+      <h4>[L-1] The constructor does not set an initial password, so the store is empty until the first <code>setPassword</code></h4>
+      <p><span class="label">Description</span><br />
+        <code>PasswordStore</code> sets <code>s_owner</code> in the constructor but never sets <code>s_password</code>.
+        Until someone calls <code>setPassword</code>, the stored value is the empty string.
+      </p>
+<pre>constructor() {
+    s_owner = msg.sender;
+}</pre>
+      <p>
+        That gap matters more because of H-2: any address can make the first write. Even after an owner-set
+        password, on-chain data remains public, as described in H-1.
+      </p>
+      <p><span class="label">Impact</span><br />
+        Between deployment and the first <code>setPassword</code>, the store has no owner-chosen secret.
+        If a non-owner writes first, the owner later reads an attacker-controlled value.
+      </p>
+      <p><span class="label">Proof of Concept</span><br />
+        Deploy the contract and call <code>getPassword</code> as the owner before any <code>setPassword</code>.
+        The return value is empty.
+      </p>
+      <p><span class="label">Recommended Mitigation</span><br />
+        Accept an initial password in the constructor (or a one-time initializer restricted to the owner)
+        so the store is never empty after deployment. This does not replace the access-control and
+        on-chain-secrecy fixes.
+      </p>
+    </article>
+
+    <article class="finding">
+      <h4>[I-1] Incorrect NatSpec on <code>getPassword</code> documents a parameter the function does not accept</h4>
+      <p><span class="label">Description</span><br />
+        The comment above <code>PasswordStore::getPassword</code> includes <code>@param newPassword The new password to set</code>.
+        <code>getPassword</code> takes no parameters and does not set a password. The documentation incorrectly implies a
+        signature such as <code>getPassword(string)</code>.
+      </p>
+<pre>/*
+ * @notice This allows only the owner to retrieve the password.
+ * @param newPassword The new password to set.
+ */
+function getPassword() external view returns (string memory) {</pre>
+      <p><span class="label">Impact</span><br />
+        Developers, auditors, and generated docs will be misled about the function’s interface and purpose. This is a
+        documentation error, not a runtime vulnerability.
+      </p>
+      <p><span class="label">Recommended Mitigation</span><br />
+        Remove the incorrect <code>@param</code> line.
+      </p>
+<pre>- * @param newPassword The new password to set.</pre>
+    </article>
+  </section>
+</body>
+</html>
